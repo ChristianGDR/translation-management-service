@@ -10,4 +10,5 @@ Route::get('/user', function (Request $request) {
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/translations', [TranslationController::class, 'store']);
+    Route::match(['put', 'patch'], '/translations/{translation}', [TranslationController::class, 'update']);
 });
