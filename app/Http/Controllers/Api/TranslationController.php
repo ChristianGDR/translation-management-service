@@ -7,12 +7,14 @@ use App\Actions\Translations\BatchUpdateTranslationsAction;
 use App\Actions\Translations\CreateTranslationAction;
 use App\Actions\Translations\ListTranslationsAction;
 use App\Actions\Translations\ListTranslationsByTagAction;
+use App\Actions\Translations\SearchTranslationsAction;
 use App\Actions\Translations\ShowTranslationAction;
 use App\Actions\Translations\UpdateTranslationAction;
 use App\Enums\TranslationContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\BatchStoreTranslationsRequest;
 use App\Http\Requests\BatchUpdateTranslationsRequest;
+use App\Http\Requests\SearchTranslationsRequest;
 use App\Http\Requests\StoreTranslationRequest;
 use App\Http\Requests\UpdateTranslationRequest;
 use App\Http\Resources\TranslationResource;
@@ -30,6 +32,16 @@ class TranslationController extends Controller
 
         return TranslationResource::collection(
             $action->handle($perPage, $page)
+        );
+    }
+
+    public function search(SearchTranslationsRequest $request, SearchTranslationsAction $action): AnonymousResourceCollection
+    {
+        $perPage = min(max($request->integer('per_page', 15), 1), 100);
+        $page = max($request->integer('page', 1), 1);
+
+        return TranslationResource::collection(
+            $action->handle($request->validated()['q'], $perPage, $page)
         );
     }
 

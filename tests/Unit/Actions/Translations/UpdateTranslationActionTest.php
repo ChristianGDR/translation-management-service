@@ -49,6 +49,7 @@ class UpdateTranslationActionTest extends TestCase
             ->with(['locale' => 'fr'], ['content' => 'Connexion']);
         $translation->shouldReceive('locales')->twice()->andReturn($localesRelation);
 
+        $translation->shouldReceive('rebuildSearchBlob')->once();
         $translation->shouldReceive('load')->once()->with('locales')->andReturnSelf();
 
         $tagged = Mockery::mock();
@@ -70,6 +71,7 @@ class UpdateTranslationActionTest extends TestCase
             ->andReturnSelf();
         $translation->shouldReceive('save')->once();
         $translation->shouldReceive('locales')->never();
+        $translation->shouldReceive('rebuildSearchBlob')->once();
         $translation->shouldReceive('load')->once()->with('locales')->andReturnSelf();
 
         $tagged = Mockery::mock();

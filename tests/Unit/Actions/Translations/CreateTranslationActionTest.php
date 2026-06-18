@@ -39,6 +39,7 @@ class CreateTranslationActionTest extends TestCase
             ->with(['locale' => 'fr', 'content' => 'Se connecter'])
             ->andReturn($created);
         $created->shouldReceive('locales')->twice()->andReturn($localesRelation);
+        $created->shouldReceive('rebuildSearchBlob')->once();
         $created->shouldReceive('load')->once()->with('locales')->andReturnSelf();
 
         $factory = Mockery::mock(Translation::class);

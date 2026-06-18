@@ -31,6 +31,8 @@ class CreateTranslationAction
             ]);
         }
 
+        $translation->rebuildSearchBlob();
+
         Cache::tags('translations')->flush();
 
         return $translation->load('locales');
