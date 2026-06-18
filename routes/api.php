@@ -10,6 +10,8 @@ Route::get('/user', function (Request $request) {
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/translations', [TranslationController::class, 'index']);
+    Route::get('/translations/id/{id}', [TranslationController::class, 'showById'])->whereNumber('id');
+    Route::get('/translations/tag/{tag}', [TranslationController::class, 'indexByTag']);
     Route::post('/translations', [TranslationController::class, 'store']);
 
     Route::post('/translations/batch', [TranslationController::class, 'batchStore']);
