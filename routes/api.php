@@ -9,6 +9,7 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/translations', [TranslationController::class, 'index']);
     Route::post('/translations', [TranslationController::class, 'store']);
 
     Route::post('/translations/batch', [TranslationController::class, 'batchStore']);

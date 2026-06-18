@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Actions\Translations\BatchCreateTranslationsAction;
 use App\Actions\Translations\BatchUpdateTranslationsAction;
 use App\Actions\Translations\CreateTranslationAction;
+use App\Actions\Translations\ListTranslationsAction;
 use App\Actions\Translations\UpdateTranslationAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\BatchStoreTranslationsRequest;
@@ -14,9 +15,21 @@ use App\Http\Requests\UpdateTranslationRequest;
 use App\Http\Resources\TranslationResource;
 use App\Models\Translation;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class TranslationController extends Controller
 {
+    public function index(Request $request, ListTranslationsAction $action): AnonymousResourceCollection
+    {
+        $perPage = min(max($request->integer('per_page', 15), 1), 100);
+        $page = max($request->integer('page', 1), 1);
+
+        return TranslationResource::collection(
+            $action->handle($perPage, $page)
+        );
+    }
+
     public function store(StoreTranslationRequest $request, CreateTranslationAction $action): JsonResponse
     {
         $translation = $action->handle($request->validated());
