@@ -1,0 +1,477 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Translation Management Service API",
+    "version": "1.0.0",
+    "description": "Manage translation keys, their tags (contexts), and per-locale content. All endpoints require a Sanctum bearer token."
+  },
+  "servers": [
+    { "url": "/", "description": "Current host" }
+  ],
+  "security": [
+    { "sanctum": [] }
+  ],
+  "tags": [
+    { "name": "Translations", "description": "CRUD, search and batch operations for translations." },
+    { "name": "Auth", "description": "Authenticated user." }
+  ],
+  "paths": {
+    "/api/translations": {
+      "get": {
+        "tags": ["Translations"],
+        "summary": "List translations",
+        "description": "Paginated, cached list of translations with their locales.",
+        "parameters": [
+          { "$ref": "#/components/parameters/PerPage" },
+          { "$ref": "#/components/parameters/Page" }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/TranslationCollection" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" }
+        }
+      },
+      "post": {
+        "tags": ["Translations"],
+        "summary": "Create a translation",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/StoreTranslation" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "$ref": "#/components/responses/SingleTranslation" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/api/translations/search": {
+      "get": {
+        "tags": ["Translations"],
+        "summary": "Search translations",
+        "description": "String search across the denormalized search blob (key + tags + locale contents).",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "description": "Search term (1-255 chars).",
+            "schema": { "type": "string", "minLength": 1, "maxLength": 255 }
+          },
+          { "$ref": "#/components/parameters/PerPage" },
+          { "$ref": "#/components/parameters/Page" }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/TranslationCollection" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/api/translations/id/{id}": {
+      "get": {
+        "tags": ["Translations"],
+        "summary": "Get a translation by id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64", "minimum": 1 }
+          }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/SingleTranslation" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/translations/tag/{tag}": {
+      "get": {
+        "tags": ["Translations"],
+        "summary": "List translations by tag",
+        "description": "Lists translations carrying the given context tag. Unknown tags return 404.",
+        "parameters": [
+          {
+            "name": "tag",
+            "in": "path",
+            "required": true,
+            "schema": { "$ref": "#/components/schemas/TranslationContext" }
+          },
+          { "$ref": "#/components/parameters/PerPage" },
+          { "$ref": "#/components/parameters/Page" }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/TranslationCollection" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/translations/{translation}": {
+      "parameters": [
+        {
+          "name": "translation",
+          "in": "path",
+          "required": true,
+          "description": "Translation id.",
+          "schema": { "type": "integer", "format": "int64", "minimum": 1 }
+        }
+      ],
+      "put": {
+        "tags": ["Translations"],
+        "summary": "Update a translation",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateTranslation" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/SingleTranslation" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      },
+      "patch": {
+        "tags": ["Translations"],
+        "summary": "Update a translation (partial)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateTranslation" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/SingleTranslation" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/api/translations/batch": {
+      "post": {
+        "tags": ["Translations"],
+        "summary": "Batch create translations",
+        "description": "Queues up to 100 translations for creation. Returns 202 Accepted.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["translations"],
+                "properties": {
+                  "translations": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "items": { "$ref": "#/components/schemas/StoreTranslation" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": { "$ref": "#/components/responses/BatchQueued" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      },
+      "put": {
+        "tags": ["Translations"],
+        "summary": "Batch update translations",
+        "description": "Queues up to 100 translations for update. Each item must carry an id. Returns 202 Accepted.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["translations"],
+                "properties": {
+                  "translations": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "items": { "$ref": "#/components/schemas/BatchUpdateItem" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": { "$ref": "#/components/responses/BatchQueued" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      },
+      "patch": {
+        "tags": ["Translations"],
+        "summary": "Batch update translations (partial)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["translations"],
+                "properties": {
+                  "translations": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "items": { "$ref": "#/components/schemas/BatchUpdateItem" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": { "$ref": "#/components/responses/BatchQueued" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/api/user": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "Current authenticated user",
+        "responses": {
+          "200": {
+            "description": "The authenticated user.",
+            "content": { "application/json": { "schema": { "type": "object" } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthenticated" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "sanctum": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Laravel Sanctum personal access token."
+      }
+    },
+    "parameters": {
+      "PerPage": {
+        "name": "per_page",
+        "in": "query",
+        "required": false,
+        "description": "Items per page. Default 15, clamped to 1-100.",
+        "schema": { "type": "integer", "default": 15, "minimum": 1, "maximum": 100 }
+      },
+      "Page": {
+        "name": "page",
+        "in": "query",
+        "required": false,
+        "description": "Page number. Default 1.",
+        "schema": { "type": "integer", "default": 1, "minimum": 1 }
+      }
+    },
+    "schemas": {
+      "TranslationContext": {
+        "type": "string",
+        "enum": ["mobile", "desktop", "web"],
+        "description": "Context tag a translation applies to."
+      },
+      "Translation": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int64", "example": 1 },
+          "key": { "type": "string", "example": "auth.login.title" },
+          "description": { "type": "string", "nullable": true, "example": "Title on the login screen" },
+          "tags": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/TranslationContext" },
+            "example": ["web", "mobile"]
+          },
+          "locales": {
+            "type": "object",
+            "additionalProperties": { "type": "string" },
+            "description": "Map of locale code to translated content.",
+            "example": { "en": "Sign in", "fr": "Se connecter" }
+          }
+        }
+      },
+      "StoreTranslation": {
+        "type": "object",
+        "required": ["key", "locales"],
+        "properties": {
+          "key": { "type": "string", "maxLength": 255, "example": "auth.login.title" },
+          "description": { "type": "string", "nullable": true, "maxLength": 255, "example": "Title on the login screen" },
+          "tags": {
+            "type": "array",
+            "nullable": true,
+            "items": { "$ref": "#/components/schemas/TranslationContext" },
+            "example": ["web"]
+          },
+          "locales": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": { "type": "string" },
+            "example": { "en": "Sign in", "fr": "Se connecter" }
+          }
+        }
+      },
+      "UpdateTranslation": {
+        "type": "object",
+        "description": "All fields optional; send only what changes.",
+        "properties": {
+          "key": { "type": "string", "maxLength": 255, "example": "auth.login.heading" },
+          "description": { "type": "string", "nullable": true, "maxLength": 255 },
+          "tags": {
+            "type": "array",
+            "nullable": true,
+            "items": { "$ref": "#/components/schemas/TranslationContext" }
+          },
+          "locales": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": { "type": "string" },
+            "example": { "en": "Log in" }
+          }
+        }
+      },
+      "BatchUpdateItem": {
+        "allOf": [
+          {
+            "type": "object",
+            "required": ["id"],
+            "properties": {
+              "id": { "type": "integer", "format": "int64", "example": 1 }
+            }
+          },
+          { "$ref": "#/components/schemas/UpdateTranslation" }
+        ]
+      },
+      "PaginationLinks": {
+        "type": "object",
+        "properties": {
+          "first": { "type": "string", "nullable": true },
+          "last": { "type": "string", "nullable": true },
+          "prev": { "type": "string", "nullable": true },
+          "next": { "type": "string", "nullable": true }
+        }
+      },
+      "PaginationMeta": {
+        "type": "object",
+        "properties": {
+          "current_page": { "type": "integer", "example": 1 },
+          "from": { "type": "integer", "nullable": true, "example": 1 },
+          "last_page": { "type": "integer", "example": 5 },
+          "path": { "type": "string" },
+          "per_page": { "type": "integer", "example": 15 },
+          "to": { "type": "integer", "nullable": true, "example": 15 },
+          "total": { "type": "integer", "example": 73 }
+        }
+      },
+      "ValidationError": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string", "example": "The key field is required." },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "TranslationCollection": {
+        "description": "Paginated list of translations.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Translation" }
+                },
+                "links": { "$ref": "#/components/schemas/PaginationLinks" },
+                "meta": { "$ref": "#/components/schemas/PaginationMeta" }
+              }
+            }
+          }
+        }
+      },
+      "SingleTranslation": {
+        "description": "A single translation.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "data": { "$ref": "#/components/schemas/Translation" }
+              }
+            }
+          }
+        }
+      },
+      "BatchQueued": {
+        "description": "Batch accepted and queued.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": { "type": "string", "example": "Queued 10 translation(s) for creation." },
+                "queued": { "type": "integer", "example": 10 }
+              }
+            }
+          }
+        }
+      },
+      "Unauthenticated": {
+        "description": "Missing or invalid bearer token.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": { "message": { "type": "string", "example": "Unauthenticated." } }
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Resource not found.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": { "message": { "type": "string", "example": "Not found." } }
+            }
+          }
+        }
+      },
+      "ValidationError": {
+        "description": "Validation failed.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ValidationError" }
+          }
+        }
+      }
+    }
+  }
+}
