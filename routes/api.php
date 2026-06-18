@@ -10,5 +10,9 @@ Route::get('/user', function (Request $request) {
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/translations', [TranslationController::class, 'store']);
+
+    Route::post('/translations/batch', [TranslationController::class, 'batchStore']);
+    Route::match(['put', 'patch'], '/translations/batch', [TranslationController::class, 'batchUpdate']);
+
     Route::match(['put', 'patch'], '/translations/{translation}', [TranslationController::class, 'update']);
 });
