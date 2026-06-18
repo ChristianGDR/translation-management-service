@@ -4,6 +4,7 @@ namespace App\Actions\Translations;
 
 use App\Models\Translation;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\LengthAwarePaginator as Paginator;
 use Illuminate\Support\Facades\Cache;
 
 class ListTranslationsAction
@@ -17,13 +18,34 @@ class ListTranslationsAction
     {
         $key = "translations:list:{$perPage}:{$page}";
 
-        return Cache::tags('translations')->remember(
+        $cached = Cache::tags('translations')->remember(
             $key,
             now()->addMinutes(10),
-            fn () => $this->translation->newQuery()
-                ->with('locales')
-                ->latest('id')
-                ->paginate($perPage, page: $page),
+            function () use ($perPage, $page) {
+                $paginator = $this->translation->newQuery()
+                    ->latest('id')
+                    ->paginate($perPage, page: $page, columns: ['id']);
+
+                return [
+                    'ids' => $paginator->pluck('id')->all(),
+                    'total' => $paginator->total(),
+                ];
+            },
+        );
+
+        $items = $this->translation->newQuery()
+            ->with('locales')
+            ->whereIn('id', $cached['ids'])
+            ->orderByDesc('id')
+            ->get()
+            ->all();
+
+        return new Paginator(
+            $items,
+            $cached['total'],
+            $perPage,
+            $page,
+            ['path' => Paginator::resolveCurrentPath()],
         );
     }
 }
